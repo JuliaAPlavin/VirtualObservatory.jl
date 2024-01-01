@@ -49,16 +49,18 @@ struct TAPTable
 	unitful::Bool
 	ra_col::String
 	dec_col::String
+	cols
 end
-TAPTable(service, tablename; unitful=true, ra_col="ra", dec_col="dec") = TAPTable(service, tablename, unitful, ra_col, dec_col)
+TAPTable(service, tablename, cols=All(); unitful=true, ra_col="ra", dec_col="dec") = TAPTable(service, tablename, unitful, ra_col, dec_col, cols)
 
-"""    execute(tap::TAPService, query::AbstractString; kwargs...)
+"""    execute([restype=DictArray], tap::TAPService, query::AbstractString; kwargs...)
 
 Execute the ADQL `query` at the specified TAP service, and return the result as a `DictArray` - a fully featured Julia table.
 
 `kwargs` are passed to `VOTables.read`, for example specify `unitful=true` to parse columns with units into `Unitful.jl` values.
 """
-execute(tap::TAPService, query::AbstractString; upload=nothing, kwargs...) = @p download(tap, query; upload) |> VOTables.read(; kwargs...)
+execute(tap::TAPService, query::AbstractString; upload=nothing, kwargs...) = execute(DictArray, tap, query; upload, kwargs...)
+execute(T::Type, tap::TAPService, query::AbstractString; upload=nothing, kwargs...) = @p download(tap, query; upload) |> VOTables.read(T; kwargs...)
 
 function Base.download(tap::TAPService, query::AbstractString, path=tempname(); upload=nothing)
 	syncurl = @p tap.baseurl |> @modify(joinpath(_, "sync"), __.path)

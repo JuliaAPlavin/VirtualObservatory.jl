@@ -41,6 +41,8 @@ function innerjoin(
 	end
 	@assert viz_ix == 1
 	
+	restype = VirtualObservatory._table_type_from_coldef(datas[1].cols)
+
 	vot_xmatch = @p let
 		datas[2]
 		StructArray(
@@ -49,15 +51,14 @@ function innerjoin(
 		)
 		mapinsert(
 			# XXX: here we assume coords have "ra" and "dec" properties in radians
-			# should somehow put this into SkyCoords extension?..
 			ra_d=rad2deg(_.coords.ra),
 			dec_d=rad2deg(_.coords.dec),
 		)
 		@delete __.coords
-		execute(datas[1].service, """
+		execute(restype, datas[1].service, """
 			SELECT
 				my.my_key,
-				taptbl.*
+				$(_cols_to_sql(datas[1].cols))
 			FROM TAP_UPLOAD.my
 			JOIN $(datas[1].tablename) AS taptbl
 			ON 1 = CONTAINS(
@@ -70,5 +71,8 @@ function innerjoin(
 	vot_viz = delete(vot_xmatch, @optics _.my_key)
 	StructArray(NamedTuple{keys(datas)}((vot_viz, view(datas[2], vot_xmatch.my_key))))
 end
+
+_cols_to_sql(::All) = "taptbl.*"
+_cols_to_sql(cols::Cols) = VirtualObservatory._colspec_to_urlparam(cols)
 
 end

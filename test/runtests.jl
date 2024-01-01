@@ -142,6 +142,14 @@ end
     @test J[5].gaiatbl.designation == "Gaia DR3 2467675250918702592"
     @test J[5].gaiatbl.ra == 28.637413462070434u"°"
     @test J.tbl[5] === tbl[2]
+
+    gaiatbl = TAPTable(TAPService(:gaia), "gaiadr3.gaia_source", Cols(:designation, :ra))
+    J = innerjoin((; tbl, gaiatbl), by_distance(:coords, identity, separation, <=(deg2rad(1/60))))
+    @test length(J) == 5
+    @test J[1].gaiatbl == (designation="Gaia DR3 2546034966433885568", ra=0.009436913982298727u"°")
+    @test J.tbl[1] === tbl[1]
+    @test J[5].gaiatbl == (designation="Gaia DR3 2467675250918702592", ra=28.637413462070434u"°")
+    @test J.tbl[5] === tbl[2]
 end
 
 @testitem "_" begin
