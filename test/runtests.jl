@@ -20,7 +20,7 @@ using TestItemRunner
     @test c[2].Epoch == Date(2006, 12, 1)
 end
 
-@testitem "TAP" begin
+@testitem "TAP vizier" begin
     using Unitful
 
     @test TAPService("http://tapvizier.cds.unistra.fr/TAPVizieR/tap") == TAPService(:vizier)
@@ -32,9 +32,22 @@ end
     tbl = execute(TAPService(:vizier), """ select top 5 * from "II/246/out" """; unitful=true)
     @test length(tbl) == 5
     @test tbl[1].RAJ2000 == 44.996055u"°"
+end
 
-    # XXX: returns binary VOTable, not supported yet
-    # tbl = DBInterface.execute(TAPService("https://simbad.u-strasbg.fr/simbad/sim-tap/"), """select top 5 * from basic""")
+@testitem "TAP simbad" begin
+    using Unitful
+
+    tbl = execute(TAPService(:simbad), """select top 5 * from basic"""; unitful=true)
+    @test length(tbl) == 5
+    @show tbl.ra[1] == 149.86624999999998u"°"
+end
+
+@testitem "TAP ned" begin
+    using Unitful
+
+    tbl = execute(TAPService(:ned), """select top 5 * from objdir"""; unitful=true)
+    @test length(tbl) == 5
+    @test tbl[1].dec == -13.967341u"°"
 end
 
 @testitem "vizier xmatch" begin

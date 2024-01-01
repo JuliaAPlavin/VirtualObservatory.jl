@@ -16,6 +16,8 @@ export TAPService, VizierCatalog, table, execute
 
 _TAP_SERVICE_URLS = Dict(
 	:vizier => "http://tapvizier.cds.unistra.fr/TAPVizieR/tap",
+	:simbad => "https://simbad.u-strasbg.fr/simbad/sim-tap",
+	:ned => "https://ned.ipac.caltech.edu/tap",
 )
 
 """
@@ -23,7 +25,8 @@ _TAP_SERVICE_URLS = Dict(
     TAPService(service::Symbol)
 
 Handler of a service following the Virtual Observatory Table Access Protocol (TAP), as [defined](https://www.ivoa.net/documents/TAP/) by IVOA.
-Instances of `TAPService` can be created by passing either a base URL of the service or a symbol corresponding to a known service: $(@p keys(_TAP_SERVICE_URLS) |> collect |> sort |> map("`:$_`") |> join(__, ", ")).
+Instances of `TAPService` can be created by passing either a base URL of the service or a symbol corresponding to a known service:
+$(@p keys(_TAP_SERVICE_URLS) |> collect |> sort |> map("`:$_`") |> join(__, ", ")).
 
 A `TAPService` aims to follow the `DBInterface` interface, with query execution as the main feature: `execute(tap, query::String)`.
 """
@@ -48,6 +51,7 @@ execute(tap::TAPService, query::AbstractString; kwargs...) = @p let
 	URI(__; query = [
 		"request" => "doQuery",
 		"lang" => "adql",
+		"FORMAT" => "VOTABLE/TD",
 		"query" => strip(query),
 	])
 	download
@@ -130,6 +134,19 @@ end
 
 # XXX: piracy
 # see https://github.com/JuliaWeb/URIs.jl/pull/55
-Base.download(uri::URI, args...) = download(URIs.uristring(uri), args...)
+# XXX: should be just this, but tests won't pass then...
+# Base.download(uri::URI, args...) = download(URIs.uristring(uri), args...)
+Base.download(uri::URI, file=tempname()) = 
+	try
+		download(URIs.uristring(uri), file)
+	catch e
+		try
+			run(`$(curl()) $(URIs.uristring(uri)) --output $file --insecure`)
+			file
+		catch
+			run(`curl $(URIs.uristring(uri)) --output $file --insecure`)
+			file
+		end
+	end
 
 end
