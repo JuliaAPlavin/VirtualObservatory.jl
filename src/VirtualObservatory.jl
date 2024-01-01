@@ -97,12 +97,12 @@ _colspec_to_urlparam(::All) = "**"
 _colspec_to_urlparam(cols::Cols{<:Tuple}) = join(cols.cols, ",")
 _colspec_to_urlparam(cols::Cols{<:Tuple{Union{Tuple,Vector}}}) = join(only(cols.cols), ",")
 
-_are_cols_tuple(::All) = false
-_are_cols_tuple(::Cols{<:Tuple}) = true
-_are_cols_tuple(::Cols{<:Tuple{Tuple}}) = true
-_are_cols_tuple(::Cols{<:Tuple{Vector}}) = false
+_table_type_from_coldef(::All) = DictArray
+_table_type_from_coldef(::Cols{<:Tuple}) = StructArray
+_table_type_from_coldef(::Cols{<:Tuple{Tuple}}) = StructArray
+_table_type_from_coldef(::Cols{<:Tuple{Vector}}) = DictArray
 
-table(c::VizierCatalog; kwargs...) = VOTables.read(_are_cols_tuple(c.cols) ? StructArray : DictArray, download(c); c.unitful, kwargs...)
+table(c::VizierCatalog; kwargs...) = VOTables.read(_table_type_from_coldef(c.cols), download(c); c.unitful, kwargs...)
 
 function vizier_xmatch_vot(A, B, maxsep)
 	params_A = @p xmatch_catalog_to_form_params(A) |> @modify(k -> "$(k)1", __ |> Elements() |> first)
@@ -123,7 +123,13 @@ function vizier_xmatch_vot(A, B, maxsep)
 	return outvot
 end
 
-xmatch_catalog_to_form_params((c, _)::Tuple{VizierCatalog, typeof(identity)}) = ["cat" => "vizier:$(c.id)"]
+function xmatch_catalog_to_form_params((c, _)::Tuple{VizierCatalog, typeof(identity)})
+	params = ["cat" => "vizier:$(c.id)"]
+	if c.cols isa Cols
+		push!(params, "cols" => _colspec_to_urlparam(c.cols))
+	end
+	return params
+end
 
 function xmatch_catalog_to_form_params((c, coordsf)::Tuple{<:AbstractVector, <:Any})
 	tbl = @p let

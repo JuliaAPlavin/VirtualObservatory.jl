@@ -21,7 +21,10 @@ function innerjoin(
 	@assert viz_ix == 1
 	
 	votfile = vizier_xmatch_vot((datas[1], cond.func_L), (datas[2], cond.func_R), cond.max)
-	vot_xmatch = VOTables.read(votfile; unitful=datas[1].unitful)
+	vot_xmatch = VOTables.read(
+		VirtualObservatory._table_type_from_coldef(datas[1].cols),
+		votfile;
+		unitful=datas[1].unitful)
 	vot_viz = delete(vot_xmatch, @optics _._key _._ra_d _._dec_d _.angDist)
 	StructArray(NamedTuple{keys(datas)}((vot_viz, view(datas[2], vot_xmatch._key))))
 end

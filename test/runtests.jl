@@ -78,11 +78,10 @@ end
     @test J[1].c.RAdeg === 0.00943691398
     @test J.tbl[1] === tbl[1]
 
-    c = VizierCatalog("I/355/gaiadr3"; unitful=true)
+    c = VizierCatalog("I/355/gaiadr3", Cols(:DR3Name, :RAdeg); unitful=true)
     J = innerjoin((; c, tbl), by_distance(identity, :coords, separation, <=(deg2rad(1/60))))
     @test length(J) == 5
-    @test J[1].c.DR3Name == "Gaia DR3 2546034966433885568"
-    @test J[1].c.RAdeg === 0.00943691398u"°"
+    @test J[1].c === (DR3Name = "Gaia DR3 2546034966433885568", RAdeg = 0.00943691398u"°")
     @test J.tbl[1] === tbl[1]
 end
 
