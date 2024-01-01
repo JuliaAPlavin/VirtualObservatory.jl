@@ -59,23 +59,39 @@ Execute the ADQL `query` at the specified TAP service, and return the result as 
 """
 execute(tap::TAPService, query::AbstractString; upload=nothing, kwargs...) = @p download(tap, query; upload) |> VOTables.read(; kwargs...)
 
-Base.download(tap::TAPService, query::AbstractString, path=tempname(); upload=nothing) = @p let
-	tap.baseurl
-	@modify(joinpath(_, "sync"), __.path)
-	# XXX: try to make the same request with HTTP.jl
-	`
-	curl -X POST
-	-F REQUEST=doQuery
-	-F LANG=ADQL
-	-F FORMAT="$(tap.format)"
-	-F QUERY=$('"' * replace(strip(query), "\"" => "\\\"") * '"')
-	$(tap_upload_cmd(upload))
-	--insecure
-	--output $path
-	$(URIs.uristring(__))
-	`
-	run(pipeline(__))
-	@_ path
+function Base.download(tap::TAPService, query::AbstractString, path=tempname(); upload=nothing)
+	syncurl = @p tap.baseurl |> @modify(joinpath(_, "sync"), __.path)
+	if isnothing(upload)
+		# should probably work with POST as well by design, but some services prefer GET when possible
+		@p let
+			syncurl
+			URI(__; query = [
+				"request" => "doQuery",
+				"lang" => "adql",
+				"FORMAT" => tap.format,
+				"query" => strip(query),
+			])
+			download(__, path)
+		end
+	else
+		# XXX: try to make the same request with HTTP.jl
+		@p let
+			syncurl
+			`
+			curl -X POST
+			-F REQUEST=doQuery
+			-F LANG=ADQL
+			-F FORMAT="$(tap.format)"
+			-F QUERY=$('"' * replace(strip(query), "\"" => "\\\"") * '"')
+			$(tap_upload_cmd(upload))
+			--insecure
+			--output $path
+			$(URIs.uristring(__))
+			`
+			run(pipeline(__))
+			@_ path
+		end
+	end
 end
 
 tap_upload_cmd(::Nothing) = []
@@ -189,12 +205,11 @@ Base.download(uri::URI, file=tempname()) =
 		download(URIs.uristring(uri), file)
 	catch e
 		try
-			run(`$(curl()) $(URIs.uristring(uri)) --output $file --insecure`)
+			run(`$(curl()) --compressed $(URIs.uristring(uri)) --output $file --insecure`)
 			file
 		catch
-			run(`curl $(URIs.uristring(uri)) --output $file --insecure`)
+			run(`curl --compressed $(URIs.uristring(uri)) --output $file --insecure`)
 			file
 		end
 	end
-
 end
