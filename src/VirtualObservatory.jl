@@ -16,29 +16,30 @@ using DataAPI: Cols, All
 export TAPService, TAPTable, VizierCatalog, table, execute, Cols, All, metadata, colmetadata
 
 
-_TAP_SERVICE_URLS = Dict(
-	:vizier => "http://tapvizier.cds.unistra.fr/TAPVizieR/tap",
-	:simbad => "https://simbad.u-strasbg.fr/simbad/sim-tap",
-	:ned => "https://ned.ipac.caltech.edu/tap",
-)
+struct TAPService
+	baseurl::URI
+	format::String
+end
+TAPService(baseurl::AbstractString, format="VOTABLE/TD") = TAPService(URI(baseurl), format)
 
-"""
+_TAP_SERVICES = Dict(
+	:vizier => TAPService("http://tapvizier.cds.unistra.fr/TAPVizieR/tap"),
+	:simbad => TAPService("https://simbad.u-strasbg.fr/simbad/sim-tap"),
+	:ned => TAPService("https://ned.ipac.caltech.edu/tap"),
+	:gaia => TAPService("https://gea.esac.esa.int/tap-server/tap", "VOTABLE_PLAIN"),
+)
+TAPService(service::Symbol) = _TAP_SERVICES[service]
+
+@doc """
     TAPService(baseurl, [format="VOTABLE/TD"])
     TAPService(service::Symbol)
 
 Handler of a service following the Virtual Observatory Table Access Protocol (TAP), as [defined](https://www.ivoa.net/documents/TAP/) by IVOA.
 Instances of `TAPService` can be created by passing either a base URL of the service or a symbol corresponding to a known service:
-$(@p keys(_TAP_SERVICE_URLS) |> collect |> sort |> map("`:$_`") |> join(__, ", ")).
+$(@p keys(_TAP_SERVICES) |> collect |> sort |> map("`:$_`") |> join(__, ", ")).
 
 A `TAPService` aims to follow the `DBInterface` interface, with query execution as the main feature: `execute(tap, query::String)`.
-"""
-struct TAPService
-	baseurl::URI
-	format::String
-end
-
-TAPService(baseurl::AbstractString, format="VOTABLE/TD") = TAPService(URI(baseurl), format)
-TAPService(service::Symbol) = TAPService(_TAP_SERVICE_URLS[service])
+""" TAPService
 
 connect(::Type{TAPService}, args...) = TAPService(args...)
 

@@ -89,7 +89,7 @@ end
 end
 
 @testitem "TAP Gaia" begin
-    tbl = execute(TAPService("https://gea.esac.esa.int/tap-server/tap", "VOTABLE_PLAIN"), "select top 5 * from gaiadr3.gaia_source order by source_id")
+    tbl = execute(TAPService(:gaia), "select top 5 * from gaiadr3.gaia_source order by source_id")
     @test length(tbl) == 5
     @test tbl[1].source_id == 4295806720
     @test tbl[1].designation == "Gaia DR3 4295806720"
@@ -133,7 +133,7 @@ end
         (name="Abc", coords=ICRSCoords(0, 0)),
         (name="Def", coords=ICRSCoords(0.5, -0.1)),
     ]
-    gaiatbl = TAPTable(TAPService("https://gea.esac.esa.int/tap-server/tap", "VOTABLE_PLAIN"), "gaiadr3.gaia_source")
+    gaiatbl = TAPTable(TAPService(:gaia), "gaiadr3.gaia_source")
     J = innerjoin((; tbl, gaiatbl), by_distance(:coords, identity, separation, <=(deg2rad(1/60))))
     @test length(J) == 5
     @test J[1].gaiatbl.designation == "Gaia DR3 2546034966433885568"
