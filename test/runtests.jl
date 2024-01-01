@@ -20,7 +20,24 @@ using TestItemRunner
     @test c[2].Epoch == Date(2006, 12, 1)
 end
 
-@testitem "join" begin
+@testitem "TAP" begin
+    using Unitful
+
+    @test TapService("http://tapvizier.cds.unistra.fr/TAPVizieR/tap") == TapService(:vizier)
+
+    tbl = execute(TapService(:vizier), """ select top 5 * from "II/246/out" """)
+    @test length(tbl) == 5
+    @test tbl[1].RAJ2000 == 44.996055
+
+    tbl = execute(TapService(:vizier), """ select top 5 * from "II/246/out" """; unitful=true)
+    @test length(tbl) == 5
+    @test tbl[1].RAJ2000 == 44.996055u"°"
+
+    # XXX: returns binary VOTable, not supported yet
+    # tbl = DBInterface.execute(TapService("https://simbad.u-strasbg.fr/simbad/sim-tap/"), """select top 5 * from basic""")
+end
+
+@testitem "vizier xmatch" begin
     using FlexiJoins
     using SkyCoords
     using Unitful

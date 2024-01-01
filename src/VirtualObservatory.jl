@@ -8,8 +8,34 @@ using AccessorsExtra
 using FlexiMaps
 using StructArrays
 using CSV
+using URIs
+import DBInterface: connect, execute
 
-export VizierCatalog, table
+export TapService, VizierCatalog, table, execute
+
+
+struct TapService
+	baseurl::URI
+end
+
+TapService(baseurl::AbstractString) = TapService(URI(baseurl))
+TapService(service::Symbol) = TapService(Dict(
+	:vizier => "http://tapvizier.cds.unistra.fr/TAPVizieR/tap",
+)[service])
+
+connect(::Type{TapService}, args...) = TapService(args...)
+
+execute(tap::TapService, query::AbstractString; kwargs...) = @p let
+	tap.baseurl
+	@modify(joinpath(_, "sync"), __.path)
+	URI(__; query = [
+		"request" => "doQuery",
+		"lang" => "adql",
+		"query" => strip(query),
+	])
+	download
+	VOTables.read(; kwargs...)
+end
 
 
 Base.@kwdef struct VizierCatalog
@@ -71,5 +97,10 @@ function xmatch_catalog_to_form_params((c, coordsf)::Tuple{<:AbstractVector, <:A
 	tbl |> CSV.write(csv_file)
 	["cat" => "@$csv_file", "colRA" => "_ra_d", "colDec" => "_dec_d"]
 end
+
+
+# XXX: piracy
+# see https://github.com/JuliaWeb/URIs.jl/pull/55
+Base.download(uri::URI, args...) = download(URIs.uristring(uri), args...)
 
 end
