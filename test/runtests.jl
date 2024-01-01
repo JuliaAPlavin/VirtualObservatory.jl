@@ -146,7 +146,7 @@ end
 
 @testitem "_" begin
     import Aqua
-    Aqua.test_all(VirtualObservatory; ambiguities=false, piracy=false)
+    Aqua.test_all(VirtualObservatory; ambiguities=false, piracies=false)
     Aqua.test_ambiguities(VirtualObservatory)
 
     import CompatHelperLocal as CHL
