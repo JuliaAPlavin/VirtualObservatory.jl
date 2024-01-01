@@ -13,7 +13,7 @@ using URIs
 import DBInterface: connect, execute
 using DataAPI: Cols, All
 
-export TAPService, VizierCatalog, table, execute, Cols, All, metadata, colmetadata
+export TAPService, TAPTable, VizierCatalog, table, execute, Cols, All, metadata, colmetadata
 
 
 _TAP_SERVICE_URLS = Dict(
@@ -41,6 +41,15 @@ TAPService(baseurl::AbstractString, format="VOTABLE/TD") = TAPService(URI(baseur
 TAPService(service::Symbol) = TAPService(_TAP_SERVICE_URLS[service])
 
 connect(::Type{TAPService}, args...) = TAPService(args...)
+
+struct TAPTable
+	service::TAPService
+	tablename::String
+	unitful::Bool
+	ra_col::String
+	dec_col::String
+end
+TAPTable(service, tablename; unitful=true, ra_col="ra", dec_col="dec") = TAPTable(service, tablename, unitful, ra_col, dec_col)
 
 """    execute(tap::TAPService, query::AbstractString; kwargs...)
 
