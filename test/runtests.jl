@@ -14,6 +14,8 @@ using TestItemRunner
     @test c[1].ID == "0003+380"
     @test c.var"nu-obs"[1] == 15.37f0
     @test c[2].Epoch == Date(2006, 12, 1)
+    @test metadata(c.ID).description == "Source name in truncated B1950.0 coordinates"
+    @test colmetadata(c, :ID) == metadata(c.ID)
 
     c = table(VizierCatalog("J/ApJ/923/67/table2", Cols([:ID, :Epoch])))
     @test c isa DictArray
@@ -77,6 +79,9 @@ end
     @test J[1].c.DR3Name == "Gaia DR3 2546034966433885568"
     @test J[1].c.RAdeg === 0.00943691398
     @test J.tbl[1] === tbl[1]
+
+    # Ju = innerjoin((; c, tbl), by_distance(identity, :coords, separation, <=((1/60)u"°")))
+    # @test Ju == J
 
     c = VizierCatalog("I/355/gaiadr3", Cols(:DR3Name, :RAdeg); unitful=true)
     J = innerjoin((; c, tbl), by_distance(identity, :coords, separation, <=(deg2rad(1/60))))

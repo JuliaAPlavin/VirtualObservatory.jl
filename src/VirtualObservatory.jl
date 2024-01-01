@@ -13,7 +13,7 @@ using URIs
 import DBInterface: connect, execute
 using DataAPI: Cols, All
 
-export TAPService, VizierCatalog, table, execute, Cols, All
+export TAPService, VizierCatalog, table, execute, Cols, All, metadata, colmetadata
 
 
 _TAP_SERVICE_URLS = Dict(
