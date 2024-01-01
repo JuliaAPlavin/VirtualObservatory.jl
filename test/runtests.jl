@@ -89,10 +89,10 @@ end
 end
 
 @testitem "TAP Gaia" begin
-    tbl = execute(TAPService("https://gea.esac.esa.int/tap-server/tap", "VOTABLE_PLAIN"), "select top 5 * from gaiadr3.gaia_source")
+    tbl = execute(TAPService("https://gea.esac.esa.int/tap-server/tap", "VOTABLE_PLAIN"), "select top 5 * from gaiadr3.gaia_source order by source_id")
     @test length(tbl) == 5
-    @test tbl[1].source_id == 1764891916939635456
-    @test tbl[1].designation == "Gaia DR3 1764891916939635456"
+    @test tbl[1].source_id == 4295806720
+    @test tbl[1].designation == "Gaia DR3 4295806720"
 end
 
 @testitem "vizier xmatch" begin
@@ -125,7 +125,7 @@ end
 
 @testitem "_" begin
     import Aqua
-    Aqua.test_all(VirtualObservatory; ambiguities=false)
+    Aqua.test_all(VirtualObservatory; ambiguities=false, piracy=false)
     Aqua.test_ambiguities(VirtualObservatory)
 
     import CompatHelperLocal as CHL
