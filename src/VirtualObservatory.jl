@@ -1,4 +1,4 @@
-module VirtualObservatory
+@doc Base.read(joinpath(dirname(@__DIR__), "README.md"), String) module VirtualObservatory
 
 using VOTables
 import Tables: table
@@ -11,21 +11,38 @@ using CSV
 using URIs
 import DBInterface: connect, execute
 
-export TapService, VizierCatalog, table, execute
+export TAPService, VizierCatalog, table, execute
 
 
-struct TapService
+_TAP_SERVICE_URLS = Dict(
+	:vizier => "http://tapvizier.cds.unistra.fr/TAPVizieR/tap",
+)
+
+"""
+    TAPService(baseurl)
+    TAPService(service::Symbol)
+
+Handler of a service following the Virtual Observatory Table Access Protocol (TAP), as [defined](https://www.ivoa.net/documents/TAP/) by IVOA.
+Instances of `TAPService` can be created by passing either a base URL of the service or a symbol corresponding to a known service: $(@p keys(_TAP_SERVICE_URLS) |> collect |> sort |> map("`:$_`") |> join(__, ", ")).
+
+A `TAPService` aims to follow the `DBInterface` interface, with query execution as the main feature: `execute(tap, query::String)`.
+"""
+struct TAPService
 	baseurl::URI
 end
 
-TapService(baseurl::AbstractString) = TapService(URI(baseurl))
-TapService(service::Symbol) = TapService(Dict(
-	:vizier => "http://tapvizier.cds.unistra.fr/TAPVizieR/tap",
-)[service])
+TAPService(baseurl::AbstractString) = TAPService(URI(baseurl))
+TAPService(service::Symbol) = TAPService(_TAP_SERVICE_URLS[service])
 
-connect(::Type{TapService}, args...) = TapService(args...)
+connect(::Type{TAPService}, args...) = TAPService(args...)
 
-execute(tap::TapService, query::AbstractString; kwargs...) = @p let
+"""    execute(tap::TAPService, query::AbstractString; kwargs...)
+
+Execute the ADQL `query` at the specified TAP service, and return the result as a `DictArray` - a fully featured Julia table.
+
+`kwargs` are passed to `VOTables.read`, for example specify `unitful=true` to parse columns with units into `Unitful.jl` values.
+"""
+execute(tap::TAPService, query::AbstractString; kwargs...) = @p let
 	tap.baseurl
 	@modify(joinpath(_, "sync"), __.path)
 	URI(__; query = [
@@ -37,7 +54,19 @@ execute(tap::TapService, query::AbstractString; kwargs...) = @p let
 	VOTables.read(; kwargs...)
 end
 
+"""    VizierCatalog(id; [unitful=false])
 
+A catalog from the [VizieR](https://vizier.u-strasbg.fr/) database, identified by its `id` (e.g. `"J/ApJS/260/4/table2"`).
+
+Main capabilities:
+- Download as a raw file: `download(::VizierCatalog)`
+- Retrieve as a Julia table (`DictArray`): `table(::VizierCatalog)`
+- Crossmatch using the [CDS X-Match service](https://cdsxmatch.u-strasbg.fr/xmatch): the `FlexiJoins` interface, `innerjoin((; ::VizierCatalog, tbl), by_distance(identity, ..., separation, <=(...)))`
+
+Keyword arguments control accessing or processing the catalog:
+- `unitful=false`: whether to parse columns with units into `Unitful.jl` values
+- `table_format="votable"`: format of the downloaded table, only supported for downloading the raw file
+"""
 Base.@kwdef struct VizierCatalog
 	id::String
 	unitful::Bool = false
