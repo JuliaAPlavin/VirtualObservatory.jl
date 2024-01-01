@@ -88,6 +88,13 @@ end
     @test tbl[1].dec isa typeof(1.0u"°")
 end
 
+@testitem "TAP Gaia" begin
+    tbl = execute(TAPService("https://gea.esac.esa.int/tap-server/tap", "VOTABLE_PLAIN"), "select top 5 * from gaiadr3.gaia_source")
+    @test length(tbl) == 5
+    @test tbl[1].source_id == 1764891916939635456
+    @test tbl[1].designation == "Gaia DR3 1764891916939635456"
+end
+
 @testitem "vizier xmatch" begin
     using FlexiJoins
     using SkyCoords

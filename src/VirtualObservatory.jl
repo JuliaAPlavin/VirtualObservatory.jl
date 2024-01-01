@@ -23,7 +23,7 @@ _TAP_SERVICE_URLS = Dict(
 )
 
 """
-    TAPService(baseurl)
+    TAPService(baseurl, [format="VOTABLE/TD"])
     TAPService(service::Symbol)
 
 Handler of a service following the Virtual Observatory Table Access Protocol (TAP), as [defined](https://www.ivoa.net/documents/TAP/) by IVOA.
@@ -34,9 +34,10 @@ A `TAPService` aims to follow the `DBInterface` interface, with query execution 
 """
 struct TAPService
 	baseurl::URI
+	format::String
 end
 
-TAPService(baseurl::AbstractString) = TAPService(URI(baseurl))
+TAPService(baseurl::AbstractString, format="VOTABLE/TD") = TAPService(URI(baseurl), format)
 TAPService(service::Symbol) = TAPService(_TAP_SERVICE_URLS[service])
 
 connect(::Type{TAPService}, args...) = TAPService(args...)
@@ -57,7 +58,7 @@ Base.download(tap::TAPService, query::AbstractString, path=tempname(); upload=no
 	curl -X POST
 	-F REQUEST=doQuery
 	-F LANG=ADQL
-	-F FORMAT="VOTABLE/TD"
+	-F FORMAT="$(tap.format)"
 	-F QUERY=$('"' * replace(strip(query), "\"" => "\\\"") * '"')
 	$(tap_upload_cmd(upload))
 	--insecure
