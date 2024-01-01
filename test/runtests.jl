@@ -50,7 +50,7 @@ end
 
     tbl = execute(TAPService(:simbad), """select top 5 * from basic"""; unitful=true)
     @test length(tbl) == 5
-    @show tbl.ra[1] == 149.86624999999998u"°"
+    @test tbl.ra[1] isa typeof(1.0u"°")
 end
 
 @testitem "TAP ned" begin
