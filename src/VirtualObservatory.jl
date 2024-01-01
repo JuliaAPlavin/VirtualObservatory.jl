@@ -47,23 +47,36 @@ Execute the ADQL `query` at the specified TAP service, and return the result as 
 
 `kwargs` are passed to `VOTables.read`, for example specify `unitful=true` to parse columns with units into `Unitful.jl` values.
 """
-execute(tap::TAPService, query::AbstractString; kwargs...) = @p download(tap, query) |> VOTables.read(; kwargs...)
+execute(tap::TAPService, query::AbstractString; upload=nothing, kwargs...) = @p download(tap, query; upload) |> VOTables.read(; kwargs...)
 
-Base.download(tap::TAPService, query::AbstractString, path=tempname()) = @p let
+Base.download(tap::TAPService, query::AbstractString, path=tempname(); upload=nothing) = @p let
 	tap.baseurl
 	@modify(joinpath(_, "sync"), __.path)
 	# XXX: try to make the same request with HTTP.jl
-	run(pipeline(`
-		curl -X POST
-		-F REQUEST=doQuery
-		-F LANG=ADQL
-		-F FORMAT="VOTABLE/TD"
-		-F QUERY=$(strip(query))
-		--insecure
-		--output $path
-		$(URIs.uristring(__))
-	`))
+	`
+	curl -X POST
+	-F REQUEST=doQuery
+	-F LANG=ADQL
+	-F FORMAT="VOTABLE/TD"
+	-F QUERY=$('"' * replace(strip(query), "\"" => "\\\"") * '"')
+	$(tap_upload_cmd(upload))
+	--insecure
+	--output $path
+	$(URIs.uristring(__))
+	`
+	run(pipeline(__))
 	@_ path
+end
+
+tap_upload_cmd(::Nothing) = []
+tap_upload_cmd(upload) = @p let
+	upload
+	map(keys(__), values(__)) do k, tbl
+		vot_file = tempname()
+		tbl |> VOTables.write(vot_file)
+		["-F UPLOAD=$k,param:$k", "-F $k=@$vot_file"]
+	end
+	flatten
 end
 
 """    VizierCatalog(id, [cols=All()]; [unitful=false])

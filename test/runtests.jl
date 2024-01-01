@@ -47,6 +47,31 @@ end
     @test tbl[1].RAJ2000 == 44.996055u"°"
 end
 
+@testitem "TAP vizier upload" begin
+    using Unitful
+
+    catalog = filter(r -> r.ID == "0003+380", table(VizierCatalog("J/ApJ/923/67/table2"); unitful=true))
+    tbl = execute(TAPService(:vizier),
+        """ select * from "J/ApJ/923/67/table2" inner join ids on "J/ApJ/923/67/table2".ID = TAP_UPLOAD.ids.id order by recno """;
+        upload=(ids=(id=["0003+380"],),),
+        unitful=true
+    )
+    @test length(tbl) == 10
+    @test propertynames(tbl) == [propertynames(catalog); :id]
+    @test tbl.ID == catalog.ID
+    @test tbl.recno == catalog.recno
+    @test tbl.Tb ≈ catalog.Tb
+
+    tbl = execute(TAPService(:vizier),
+        """ 
+            select * from "J/ApJ/923/67/table2" inner join t1 on "J/ApJ/923/67/table2".recno = t1.no1 inner join t2 on "J/ApJ/923/67/table2".recno = t2.no2
+        """;
+        upload=(t1=(no1=[1, 2],), t2=(no2=[2, 3],)),
+        unitful=true
+    )
+    @test tbl.recno == [2]
+end
+
 @testitem "TAP simbad" begin
     using Unitful
 
