@@ -7,11 +7,13 @@ using DataPipes
 using AccessorsExtra
 using FlexiMaps
 using StructArrays
+using DictArrays
 using CSV
 using URIs
 import DBInterface: connect, execute
+using DataAPI: Cols, All
 
-export TAPService, VizierCatalog, table, execute
+export TAPService, VizierCatalog, table, execute, Cols, All
 
 
 _TAP_SERVICE_URLS = Dict(
@@ -45,7 +47,9 @@ Execute the ADQL `query` at the specified TAP service, and return the result as 
 
 `kwargs` are passed to `VOTables.read`, for example specify `unitful=true` to parse columns with units into `Unitful.jl` values.
 """
-execute(tap::TAPService, query::AbstractString; kwargs...) = @p let
+execute(tap::TAPService, query::AbstractString; kwargs...) = @p download(tap, query) |> VOTables.read(; kwargs...)
+
+Base.download(tap::TAPService, query::AbstractString, path=tempname()) = @p let
 	tap.baseurl
 	@modify(joinpath(_, "sync"), __.path)
 	URI(__; query = [
@@ -54,11 +58,10 @@ execute(tap::TAPService, query::AbstractString; kwargs...) = @p let
 		"FORMAT" => "VOTABLE/TD",
 		"query" => strip(query),
 	])
-	download
-	VOTables.read(; kwargs...)
+	download(__, path)
 end
 
-"""    VizierCatalog(id; [unitful=false])
+"""    VizierCatalog(id, [cols=All()]; [unitful=false])
 
 A catalog from the [VizieR](https://vizier.u-strasbg.fr/) database, identified by its `id` (e.g. `"J/ApJS/260/4/table2"`).
 
@@ -67,45 +70,56 @@ Main capabilities:
 - Retrieve as a Julia table (`DictArray`): `table(::VizierCatalog)`
 - Crossmatch using the [CDS X-Match service](https://cdsxmatch.u-strasbg.fr/xmatch): the `FlexiJoins` interface, `innerjoin((; ::VizierCatalog, tbl), by_distance(identity, ..., separation, <=(...)))`
 
-Keyword arguments control accessing or processing the catalog:
+Arguments control accessing or processing the catalog:
+- `cols=All()`: only retrieve selected columns. If `Cols(:a, :b, ...)`: return a `StructArray`; if `All()` or `Cols([:a, :b, ...])`: return a `DictArray`.
 - `unitful=false`: whether to parse columns with units into `Unitful.jl` values
 - `table_format="votable"`: format of the downloaded table, only supported for downloading the raw file
 """
 Base.@kwdef struct VizierCatalog
 	id::String
+	cols
 	unitful::Bool = false
 	table_format::String = "votable"
-	params_string::String = "-out=**&-out.max=unlimited" # -out=_RAJ2000,_DEJ2000,_sed0,**
+	params_string::String = "-out.max=unlimited" # -out=_RAJ2000,_DEJ2000,_sed0,**
 end
 
-VizierCatalog(id; kwargs...) = VizierCatalog(; id, kwargs...)
+VizierCatalog(id, cols=All(); kwargs...) = VizierCatalog(; id, cols, kwargs...)
 
 function Base.download(c::VizierCatalog, path=tempname())
 	# output = IOBuffer()
 	# Downloads.request("https://vizier.cds.unistra.fr/viz-bin/votable"; method="POST", input=IOBuffer("""-source=$(c.id)&$(c.params_string)"""), output)
 	# seekstart(output)
 	# write(path, output)
-	download("https://vizier.cds.unistra.fr/viz-bin/votable?-source=$(c.id)&$(c.params_string)", path)
+	download("https://vizier.cds.unistra.fr/viz-bin/votable?-source=$(c.id)&-out=$(_colspec_to_urlparam(c.cols))&$(c.params_string)", path)
 end
 
-table(c::VizierCatalog; kwargs...) = VOTables.read(download(c); c.unitful, kwargs...)
+_colspec_to_urlparam(::All) = "**"
+_colspec_to_urlparam(cols::Cols{<:Tuple}) = join(cols.cols, ",")
+_colspec_to_urlparam(cols::Cols{<:Tuple{Union{Tuple,Vector}}}) = join(only(cols.cols), ",")
+
+_are_cols_tuple(::All) = false
+_are_cols_tuple(::Cols{<:Tuple}) = true
+_are_cols_tuple(::Cols{<:Tuple{Tuple}}) = true
+_are_cols_tuple(::Cols{<:Tuple{Vector}}) = false
+
+table(c::VizierCatalog; kwargs...) = VOTables.read(_are_cols_tuple(c.cols) ? StructArray : DictArray, download(c); c.unitful, kwargs...)
 
 function vizier_xmatch_vot(A, B, maxsep)
 	params_A = @p xmatch_catalog_to_form_params(A) |> @modify(k -> "$(k)1", __ |> Elements() |> first)
 	params_B = @p xmatch_catalog_to_form_params(B) |> @modify(k -> "$(k)2", __ |> Elements() |> first)
 	params = vcat(params_A, params_B)
 	params_cmd = @p params |> map("-F$(first(_))=$(last(_))")
-	outvot = IOBuffer()
+	outvot = tempname()
 	# XXX: couldn't make the same request with HTTP.jl
 	run(pipeline(`
 		$(curl()) -X POST
 		-F REQUEST=xmatch
 		-F distMaxArcsec=$(rad2deg(maxsep) * 60^2)
 		-F RESPONSEFORMAT=votable
+		--output $(outvot)
 		$(params_cmd)
 		http://cdsxmatch.u-strasbg.fr/xmatch/api/v1/sync
-	`; stdout=outvot))
-	seekstart(outvot)
+	`))
 	return outvot
 end
 

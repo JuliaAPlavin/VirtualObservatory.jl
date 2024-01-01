@@ -6,12 +6,23 @@ using TestItemRunner
 @testitem "vizier catalog" begin
     using Dates
     using Unitful
+    using VirtualObservatory: StructArray
+    using VirtualObservatory.VOTables: DictArray
 
-    c = table(VizierCatalog("J/ApJ/923/67/table2"; unitful=false))
+    c = table(VizierCatalog("J/ApJ/923/67/table2"))
     @test c.recno == 1:7728
     @test c[1].ID == "0003+380"
     @test c.var"nu-obs"[1] == 15.37f0
     @test c[2].Epoch == Date(2006, 12, 1)
+
+    c = table(VizierCatalog("J/ApJ/923/67/table2", Cols([:ID, :Epoch])))
+    @test c isa DictArray
+    @test length(c[1]) == 2
+    @test c[1].ID == "0003+380"
+
+    c = table(VizierCatalog("J/ApJ/923/67/table2", Cols(:ID, :Epoch)))
+    @test c isa StructArray
+    @test c[1] === (ID = "0003+380", Epoch = Dates.Date("2006-03-09"))
 
     c = table(VizierCatalog("J/ApJ/923/67/table2"; unitful=true))
     @test c.recno == 1:7728
@@ -47,7 +58,7 @@ end
 
     tbl = execute(TAPService(:ned), """select top 5 * from objdir"""; unitful=true)
     @test length(tbl) == 5
-    @test tbl[1].dec == -13.967341u"°"
+    @test tbl[1].dec isa typeof(1.0u"°")
 end
 
 @testitem "vizier xmatch" begin
@@ -60,7 +71,7 @@ end
         (name="Def", coords=ICRSCoords(0.5, -0.1)),
     ]
 
-    c = VizierCatalog("I/355/gaiadr3"; unitful=false)
+    c = VizierCatalog("I/355/gaiadr3")
     J = innerjoin((; c, tbl), by_distance(identity, :coords, separation, <=(deg2rad(1/60))))
     @test length(J) == 5
     @test J[1].c.DR3Name == "Gaia DR3 2546034966433885568"
