@@ -38,13 +38,13 @@ end
 
     @test TAPService("http://tapvizier.cds.unistra.fr/TAPVizieR/tap") == TAPService(:vizier)
 
-    tbl = execute(TAPService(:vizier), """ select top 5 * from "II/246/out" """)
-    @test length(tbl) == 5
-    @test tbl[1].RAJ2000 == 44.996055
+    tbl = execute(TAPService(:vizier), """ select top 50 * from "II/246/out" order by RAJ2000 """)
+    @test length(tbl) == 50
+    @test tbl[49].RAJ2000 == 9.4e-5
 
-    tbl = execute(TAPService(:vizier), """ select top 5 * from "II/246/out" """; unitful=true)
-    @test length(tbl) == 5
-    @test tbl[1].RAJ2000 == 44.996055u"°"
+    tbl = execute(TAPService(:vizier), """ select top 50 * from "II/246/out" order by RAJ2000 """; unitful=true)
+    @test length(tbl) == 50
+    @test tbl[49].RAJ2000 == 9.4e-5u"°"
 end
 
 @testitem "TAP vizier upload" begin
