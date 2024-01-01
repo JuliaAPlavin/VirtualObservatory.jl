@@ -52,13 +52,18 @@ execute(tap::TAPService, query::AbstractString; kwargs...) = @p download(tap, qu
 Base.download(tap::TAPService, query::AbstractString, path=tempname()) = @p let
 	tap.baseurl
 	@modify(joinpath(_, "sync"), __.path)
-	URI(__; query = [
-		"request" => "doQuery",
-		"lang" => "adql",
-		"FORMAT" => "VOTABLE/TD",
-		"query" => strip(query),
-	])
-	download(__, path)
+	# XXX: try to make the same request with HTTP.jl
+	run(pipeline(`
+		curl -X POST
+		-F REQUEST=doQuery
+		-F LANG=ADQL
+		-F FORMAT="VOTABLE/TD"
+		-F QUERY=$(strip(query))
+		--insecure
+		--output $path
+		$(URIs.uristring(__))
+	`))
+	@_ path
 end
 
 """    VizierCatalog(id, [cols=All()]; [unitful=false])
