@@ -19,13 +19,14 @@ struct TAPService
 	baseurl::URI
 	format::String
 end
-TAPService(baseurl::AbstractString, format="VOTABLE/TD") = TAPService(URI(baseurl), format)
+TAPService(baseurl::AbstractString; format="VOTABLE/TD") = TAPService(URI(baseurl), format)
 
 _TAP_SERVICES = Dict(
 	:vizier => TAPService("http://tapvizier.cds.unistra.fr/TAPVizieR/tap"),
 	:simbad => TAPService("https://simbad.u-strasbg.fr/simbad/sim-tap"),
 	:ned => TAPService("https://ned.ipac.caltech.edu/tap"),
-	:gaia => TAPService("https://gea.esac.esa.int/tap-server/tap", "VOTABLE_PLAIN"),
+	:gaia => TAPService("https://gea.esac.esa.int/tap-server/tap", format="VOTABLE_PLAIN"),
+	:cadc => TAPService("https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus", format="VOTABLE"),
 )
 TAPService(service::Symbol) = _TAP_SERVICES[service]
 
@@ -69,7 +70,7 @@ function Base.download(tap::TAPService, query::AbstractString, path=tempname(); 
 			syncurl
 			URI(__; query = [
 				"request" => "doQuery",
-				"lang" => "adql",
+				"lang" => "ADQL",
 				"FORMAT" => tap.format,
 				"query" => strip(query),
 			])
