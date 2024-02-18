@@ -7,7 +7,6 @@ using DataPipes
 using AccessorsExtra
 using FlexiMaps
 using StructArrays
-using DictArrays
 using CSV
 using URIs
 import DBInterface: connect, execute
@@ -53,13 +52,13 @@ struct TAPTable
 end
 TAPTable(service, tablename, cols=All(); unitful=true, ra_col="ra", dec_col="dec") = TAPTable(service, tablename, unitful, ra_col, dec_col, cols)
 
-"""    execute([restype=DictArray], tap::TAPService, query::AbstractString; kwargs...)
+"""    execute([restype=StructArray], tap::TAPService, query::AbstractString; kwargs...)
 
-Execute the ADQL `query` at the specified TAP service, and return the result as a `DictArray` - a fully featured Julia table.
+Execute the ADQL `query` at the specified TAP service, and return the result as a `StructArray` - a fully featured Julia table.
 
 `kwargs` are passed to `VOTables.read`, for example specify `unitful=true` to parse columns with units into `Unitful.jl` values.
 """
-execute(tap::TAPService, query::AbstractString; upload=nothing, kwargs...) = execute(DictArray, tap, query; upload, kwargs...)
+execute(tap::TAPService, query::AbstractString; upload=nothing, kwargs...) = execute(StructArray, tap, query; upload, kwargs...)
 execute(T::Type, tap::TAPService, query::AbstractString; upload=nothing, kwargs...) = @p download(tap, query; upload) |> VOTables.read(T; kwargs...)
 
 function Base.download(tap::TAPService, query::AbstractString, path=tempname(); upload=nothing)
@@ -114,11 +113,11 @@ A catalog from the [VizieR](https://vizier.u-strasbg.fr/) database, identified b
 
 Main capabilities:
 - Download as a raw file: `download(::VizierCatalog)`
-- Retrieve as a Julia table (`DictArray`): `table(::VizierCatalog)`
+- Retrieve as a Julia table (`StructArray`): `table(::VizierCatalog)`
 - Crossmatch using the [CDS X-Match service](https://cdsxmatch.u-strasbg.fr/xmatch): the `FlexiJoins` interface, `innerjoin((; ::VizierCatalog, tbl), by_distance(identity, ..., separation, <=(...)))`
 
 Arguments control accessing or processing the catalog:
-- `cols=All()`: only retrieve selected columns. If `Cols(:a, :b, ...)`: return a `StructArray`; if `All()` or `Cols([:a, :b, ...])`: return a `DictArray`.
+- `cols=All()`: only retrieve selected columns
 - `unitful=false`: whether to parse columns with units into `Unitful.jl` values
 - `table_format="votable"`: format of the downloaded table, only supported for downloading the raw file
 """
@@ -144,10 +143,7 @@ _colspec_to_urlparam(::All) = "**"
 _colspec_to_urlparam(cols::Cols{<:Tuple}) = join(cols.cols, ",")
 _colspec_to_urlparam(cols::Cols{<:Tuple{Union{Tuple,Vector}}}) = join(only(cols.cols), ",")
 
-_table_type_from_coldef(::All) = DictArray
-_table_type_from_coldef(::Cols{<:Tuple}) = StructArray
-_table_type_from_coldef(::Cols{<:Tuple{Tuple}}) = StructArray
-_table_type_from_coldef(::Cols{<:Tuple{Vector}}) = DictArray
+_table_type_from_coldef(_) = StructArray
 
 table(c::VizierCatalog; kwargs...) = VOTables.read(_table_type_from_coldef(c.cols), download(c); c.unitful, kwargs...)
 
