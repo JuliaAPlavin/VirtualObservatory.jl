@@ -108,12 +108,13 @@ function Base.download(tap::TAPService, query::AbstractString, path=tempname(); 
         resp = HTTP.request(method, sync_url, headers, body;
             require_ssl_verification=false, # Allow user to override these...
             pool=HTTP.Pool(1),
+            status_exception=false,
             HTTP_REQUEST_OPTIONS..., # ...with kwargs given here...
             query=http_query, response_stream # ...but not these
         )
-
-        if resp.status != HTTP.StatusCodes.OK
-            @warn "Unexpected HTTP status code $(resp.status):\n$(resp.body)"
+        if HTTP.iserror(resp)
+            e = HTTP.StatusError(resp.status, method, string(sync_url), resp)
+            @error "HTTP request failed" e
         end
     end
 
