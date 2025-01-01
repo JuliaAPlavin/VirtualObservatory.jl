@@ -1,4 +1,4 @@
-@doc Base.read(joinpath(dirname(@__DIR__), "README.md"), String) module VirtualObservatory
+module VirtualObservatory
 
 using VOTables
 import Tables: table

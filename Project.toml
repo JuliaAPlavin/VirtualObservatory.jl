@@ -1,7 +1,7 @@
 name = "VirtualObservatory"
 uuid = "d7ce213e-d3b9-4ed1-b00e-1146b7ac83e0"
 authors = ["Alexander Plavin <alexander@plav.in>"]
-version = "0.1.10"
+version = "0.1.11"
 
 [deps]
 AccessorsExtra = "33016aad-b69d-45be-9359-82a41f556fd4"
