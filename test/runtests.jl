@@ -79,6 +79,9 @@ end
         unitful=true
     )
     @test tbl.recno == [2]
+
+    mytbl = [(a=1, b="xx")]
+    @test execute(TAPService(:vizier), "select * from TAP_UPLOAD.my"; upload=(my=mytbl,)) == mytbl
 end
 
 @testitem "TAP simbad" begin
@@ -87,6 +90,9 @@ end
     tbl = execute(TAPService(:simbad), """select top 5 * from basic"""; unitful=true)
     @test length(tbl) == 5
     @test tbl.ra[1] isa typeof(1.0u"°")
+
+    mytbl = [(a=1, b="xx")]
+    @test execute(TAPService(:simbad), "select * from TAP_UPLOAD.my"; upload=(my=mytbl,)) == mytbl
 end
 
 @testitem "TAP ned" begin
@@ -95,6 +101,9 @@ end
     tbl = execute(TAPService(:ned), """select top 5 * from objdir"""; unitful=true)
     @test length(tbl) == 5
     @test tbl[1].dec isa typeof(1.0u"°")
+
+    mytbl = [(a=1, b="xx")]
+    @test_throws "Uploads are not allowed" execute(TAPService(:ned), "select * from TAP_UPLOAD.my"; upload=(my=mytbl,))
 end
 
 @testitem "TAP Gaia" begin
@@ -102,12 +111,18 @@ end
     @test length(tbl) == 5
     @test tbl[1].source_id == 4295806720
     @test tbl[1].designation == "Gaia DR3 4295806720"
+
+    mytbl = [(a=1, b="xx")]
+    @test execute(TAPService(:gaia), "select * from TAP_UPLOAD.my"; upload=(my=mytbl,)) == mytbl
 end
 
 @testitem "TAP cadc" begin
     tbl = execute(TAPService(:cadc), "select top 5 * from caom2.Observation")
     @test length(tbl) == 5
     @test !isempty(tbl[1].observationURI::String)
+
+    mytbl = [(a=1, b="xx")]
+    @test execute(TAPService(:cadc), "select * from TAP_UPLOAD.my"; upload=(my=mytbl,)) == mytbl
 end
 
 @testitem "DataLink cadc" begin

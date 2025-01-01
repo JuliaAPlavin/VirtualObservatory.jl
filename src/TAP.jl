@@ -66,7 +66,7 @@ function Base.download(tap::TAPService, query::AbstractString, path=tempname(); 
         @p let
             syncurl
             `
-            curl -X POST
+            curl
             -F REQUEST=doQuery
             -F LANG=ADQL
             -F FORMAT="$(tap.format)"
@@ -74,6 +74,7 @@ function Base.download(tap::TAPService, query::AbstractString, path=tempname(); 
             $(tap_upload_cmd(upload))
             --insecure
             --output $path
+            --location
             $(URIs.uristring(__))
             `
             run(pipeline(__))
