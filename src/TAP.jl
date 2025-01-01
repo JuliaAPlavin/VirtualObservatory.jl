@@ -22,6 +22,9 @@ Instances of `TAPService` can be created by passing either a base URL of the ser
 $(@p keys(_TAP_SERVICES) |> collect |> sort |> map("`:$_`") |> join(__, ", ")).
 
 A `TAPService` aims to follow the `DBInterface` interface, with query execution as the main feature: `execute(tap, query::String)`.
+
+`TAPService` queries use `HTTP.request`. Keyword arguments for `HTTP.request` may be given in the `VirtualObservator.HTTP_REQUEST_OPTIONS` `Dict`.
+See the docstrings for `HTTP_REQUEST_OPTIONS` and `HTTP.request` for more details.
 """ TAPService
 
 connect(::Type{TAPService}, args...) = TAPService(args...)
@@ -48,44 +51,63 @@ execute(tap::TAPService, query::AbstractString; upload=nothing, kwargs...) = exe
 execute(T::Type, tap::TAPService, query::AbstractString; upload=nothing, kwargs...) = @p download(tap, query; upload) |> VOTables.read(T; kwargs...)
 
 function Base.download(tap::TAPService, query::AbstractString, path=tempname(); upload=nothing)
-    syncurl = @p tap.baseurl |> @modify(joinpath(_, "sync"), __.path)
+    # URL is the same regardless of uploading or not
+    sync_url = @p tap.baseurl |> @modify(joinpath(_, "sync"), __.path)
+
+    # HTTP method, body, query are different for uploading vs not uploading
     if isnothing(upload)
-        # should probably work with POST as well by design, but some services prefer GET when possible
-        uri = URI(syncurl; query = [[
+        # not uploading
+        method = "GET"
+        body = []
+        http_query = Pair{String,Any}[[
             "request" => "doQuery",
             "lang" => "ADQL",
-            "query" => strip(query),
-        ];
+            "query" => strip(query),];
             isnothing(tap.format) ? [] : ["FORMAT" => tap.format];
-        ])
-        download(uri, path)
+        ]
     else
-        # XXX: try to make the same request with HTTP.jl
-        fmtpart = isnothing(tap.format) ? `` : `-F FORMAT="$(tap.format)"`
-        cmd = `
-            curl
-            -F REQUEST=doQuery
-            -F LANG=ADQL
-            $fmtpart
-            -F QUERY=$('"' * replace(strip(query), "\"" => "\\\"") * '"')
-            $(tap_upload_cmd(upload))
-            --insecure
-            --output $path
-            --location
-            $(URIs.uristring(syncurl))
-        `
-        run(pipeline(cmd))
-        return path
-    end
-end
+        # uploading
+        method = "POST"
+        http_query = []
+        formdata = Pair{String,Any}[[
+            "request" => "doQuery",
+            "lang" => "ADQL",
+            "query" => strip(query),];
+            isnothing(tap.format) ? [] : ["FORMAT" => tap.format];
+            @p pairs(upload) collect flatmap() do (k, tbl)
+                    vot_io = IOBuffer()
+                    VOTables.write(vot_io, tbl)
+                    seekstart(vot_io)
 
-tap_upload_cmd(::Nothing) = []
-tap_upload_cmd(upload) = @p let
-    upload
-    map(keys(__), values(__)) do k, tbl
-        vot_file = tempname()
-        tbl |> VOTables.write(vot_file)
-        ["-F UPLOAD=$k,param:$k", "-F $k=@$vot_file"]
+                    ["UPLOAD" => "$k,param:$k",
+                        string(k) => HTTP.Multipart("tbl.vot", vot_io, "application/x-votable+xml")]
+            end;
+        ]
+        body = HTTP.Form(formdata)
     end
-    flatten
+
+    # Now make request and write response body to path
+    open(path, "w") do response_stream
+        # 1. Use require_ssl_verification=false to match the previous use of
+        #    curl's --insecure option (even though tests pass without it).
+        #
+        # 2. Use pool=HTTP.Pool(1) to make tests pass (avoids concurrency
+        #    issues?)
+        #
+        # The user can override these and/or use other HTTP.request kwargs by
+        # putting them in the HTTP_REQUEST_OPTIONS Dict{Symbol,Any}.
+        headers = []
+        resp = HTTP.request(method, sync_url, headers, body;
+            require_ssl_verification=false, # Allow user to override these...
+            pool=HTTP.Pool(1),
+            HTTP_REQUEST_OPTIONS..., # ...with kwargs given here...
+            query=http_query, response_stream # ...but not these
+        )
+
+        if resp.status != HTTP.StatusCodes.OK
+            @warn "Unexpected HTTP status code $(resp.status):\n$(resp.body)"
+        end
+    end
+
+    return path
 end
