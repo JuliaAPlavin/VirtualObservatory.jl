@@ -104,6 +104,12 @@ end
     @test tbl[1].designation == "Gaia DR3 4295806720"
 end
 
+@testitem "TAP cadc" begin
+    tbl = execute(TAPService(:cadc), "select top 5 * from caom2.Observation")
+    @test length(tbl) == 5
+    @test !isempty(tbl[1].observationURI::String)
+end
+
 @testitem "vizier xmatch" begin
     using FlexiJoins
     using SkyCoords
