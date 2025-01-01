@@ -44,16 +44,18 @@ end
 
     @test TAPService("http://tapvizier.cds.unistra.fr/TAPVizieR/tap") == TAPService(:vizier)
 
-    tbl = execute(TAPService(:vizier), """ select top 50 * from "II/246/out" order by RAJ2000 """)
+    tbl = execute(TAPService(:vizier), """ select top 50 * from "II/246/out" order by 2MASS """)
     @test length(tbl) == 50
-    @test tbl[49].RAJ2000 == 9.4e-5
+    @test tbl[49].RAJ2000 == 0.0001
+    @test tbl[49].DEJ2000 == 34.987617
 
-    @test isequal(execute(StructArray, TAPService(:vizier), """ select top 50 * from "II/246/out" order by RAJ2000 """), tbl)
-    @test isequal(execute(DictArray, TAPService(:vizier), """ select top 50 * from "II/246/out" order by RAJ2000 """) |> StructArray, tbl)
+    @test isequal(execute(StructArray, TAPService(:vizier), """ select top 50 * from "II/246/out" order by 2MASS """), tbl)
+    @test isequal(execute(DictArray, TAPService(:vizier), """ select top 50 * from "II/246/out" order by 2MASS """) |> StructArray, tbl)
 
-    tbl = execute(TAPService(:vizier), """ select top 50 * from "II/246/out" order by RAJ2000 """; unitful=true)
+    tbl = execute(TAPService(:vizier), """ select top 50 * from "II/246/out" order by 2MASS """; unitful=true)
     @test length(tbl) == 50
-    @test tbl[49].RAJ2000 == 9.4e-5u"°"
+    @test tbl[49].RAJ2000 == 0.0001u"°"
+    @test tbl[49].DEJ2000 == 34.987617u"°"
 end
 
 @testitem "TAP vizier upload" begin
