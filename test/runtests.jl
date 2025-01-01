@@ -110,6 +110,27 @@ end
     @test !isempty(tbl[1].observationURI::String)
 end
 
+@testitem "DataLink cadc" begin
+    using VirtualObservatory: DataLinkService
+
+    dl = DataLinkService(:cadc)
+    @test dl.datalink_url == VirtualObservatory.URI("https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops/datalink")
+
+    svc = VOService(:cadc)
+    rows = execute(svc, """
+    select top 5
+        Observation.*,
+        Plane.*
+    FROM caom2.Plane AS Plane 
+    JOIN caom2.Observation AS Observation ON Plane.obsID = Observation.obsID 
+    where
+    collection = 'VLASS'
+    and INTERSECTS( CIRCLE('ICRS', 187.7059304, 12.39112306, 0.016666666666666666), Plane.position_bounds ) = 1
+    """)
+    dlt = datalink_table(svc, rows[1])
+    @test only(filter(x -> x.semantics == "#this", dlt)).ID == "ivo://cadc.nrc.ca/VLASS?VLASS1.2.T14t19.J123040+123000/VLASS1.2.T14t19.J123040+123000.quicklook"
+end
+
 @testitem "vizier xmatch" begin
     using FlexiJoins
     using SkyCoords
