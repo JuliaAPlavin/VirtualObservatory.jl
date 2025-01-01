@@ -28,7 +28,7 @@ FlexiJoinsSkyCoordsExt = ["FlexiJoins", "SkyCoords"]
 [compat]
 AccessorsExtra = "0.1.49"
 CSV = "0.10.11"
-CURL_jll = "7.81.0"
+CURL_jll = "7.81.0, 8"
 DBInterface = "2.5.0"
 DataAPI = "1.15.0"
 DataPipes = "0.3.8"
