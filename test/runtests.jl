@@ -7,14 +7,19 @@ using TestItemRunner
     using Dates
     using Unitful
     using VirtualObservatory: StructArray
+    using DictArrays
 
-    c = table(VizierCatalog("J/ApJ/923/67/table2"))
+    vizcat = VizierCatalog("J/ApJ/923/67/table2")
+    c = table(vizcat)
     @test c.recno == 1:7728
     @test c[1].ID == "0003+380"
     @test c.var"nu-obs"[1] == 15.37f0
     @test c[2].Epoch == Date(2006, 12, 1)
     @test metadata(c.ID).description == "Source name in truncated B1950.0 coordinates"
     @test colmetadata(c, :ID) == metadata(c.ID)
+
+    @test isequal(StructArray(vizcat), c)
+    @test isequal(StructArray(DictArray(vizcat)), c)
 
     c = table(VizierCatalog("J/ApJ/923/67/table2", Cols([:ID, :Epoch])))
     @test c isa StructArray
@@ -33,6 +38,8 @@ using TestItemRunner
 end
 
 @testitem "TAP vizier" begin
+    using VirtualObservatory: StructArray
+    using DictArrays
     using Unitful
 
     @test TAPService("http://tapvizier.cds.unistra.fr/TAPVizieR/tap") == TAPService(:vizier)
@@ -40,6 +47,9 @@ end
     tbl = execute(TAPService(:vizier), """ select top 50 * from "II/246/out" order by RAJ2000 """)
     @test length(tbl) == 50
     @test tbl[49].RAJ2000 == 9.4e-5
+
+    @test isequal(execute(StructArray, TAPService(:vizier), """ select top 50 * from "II/246/out" order by RAJ2000 """), tbl)
+    @test isequal(execute(DictArray, TAPService(:vizier), """ select top 50 * from "II/246/out" order by RAJ2000 """) |> StructArray, tbl)
 
     tbl = execute(TAPService(:vizier), """ select top 50 * from "II/246/out" order by RAJ2000 """; unitful=true)
     @test length(tbl) == 50
@@ -121,6 +131,17 @@ end
     @test J.tbl[1] === tbl[1]
     @test J[5].c === (DR3Name = "Gaia DR3 2467675250918702592", RAdeg = 28.63741346207u"°")
     @test J.tbl[5] === tbl[2]
+end
+
+@testitem "TAPTable" begin
+    using VirtualObservatory: StructArray
+    using DictArrays
+
+    tbl = TAPTable(TAPService(:vizier), "J/ApJ/923/67/table2")
+    A = StructArray(tbl)
+    @test isequal(StructArray(DictArray(tbl)), A)
+    @test isequal(execute(StructArray, TAPService(:vizier), " select * from \"J/ApJ/923/67/table2\" "), A)
+    @test isequal(execute(DictArray, TAPService(:vizier), " select * from \"J/ApJ/923/67/table2\" ") |> StructArray, A)
 end
 
 @testitem "TAP xmatch" begin
