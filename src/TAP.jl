@@ -1,15 +1,15 @@
 struct TAPService
     baseurl::URI
-    format::String
+    format::Union{String,Nothing}
 end
-TAPService(baseurl::AbstractString; format="VOTABLE/TD") = TAPService(URI(baseurl), format)
+TAPService(baseurl::AbstractString; format=nothing) = TAPService(URI(baseurl), format)
 
 _TAP_SERVICES = Dict(
     :vizier => TAPService("http://tapvizier.cds.unistra.fr/TAPVizieR/tap"),
     :simbad => TAPService("https://simbad.u-strasbg.fr/simbad/sim-tap"),
     :ned => TAPService("https://ned.ipac.caltech.edu/tap"),
-    :gaia => TAPService("https://gea.esac.esa.int/tap-server/tap", format="VOTABLE_PLAIN"),
-    :cadc => TAPService("https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus", format="VOTABLE"),
+    :gaia => TAPService("https://gea.esac.esa.int/tap-server/tap"),
+    :cadc => TAPService("https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus"),
 )
 TAPService(service::Symbol) = _TAP_SERVICES[service]
 
@@ -51,35 +51,31 @@ function Base.download(tap::TAPService, query::AbstractString, path=tempname(); 
     syncurl = @p tap.baseurl |> @modify(joinpath(_, "sync"), __.path)
     if isnothing(upload)
         # should probably work with POST as well by design, but some services prefer GET when possible
-        @p let
-            syncurl
-            URI(__; query = [
-                "request" => "doQuery",
-                "lang" => "ADQL",
-                "FORMAT" => tap.format,
-                "query" => strip(query),
-            ])
-            download(__, path)
-        end
+        uri = URI(syncurl; query = [[
+            "request" => "doQuery",
+            "lang" => "ADQL",
+            "query" => strip(query),
+        ];
+            isnothing(tap.format) ? [] : ["FORMAT" => tap.format];
+        ])
+        download(uri, path)
     else
         # XXX: try to make the same request with HTTP.jl
-        @p let
-            syncurl
-            `
+        fmtpart = isnothing(tap.format) ? `` : `-F FORMAT="$(tap.format)"`
+        cmd = `
             curl
             -F REQUEST=doQuery
             -F LANG=ADQL
-            -F FORMAT="$(tap.format)"
+            $fmtpart
             -F QUERY=$('"' * replace(strip(query), "\"" => "\\\"") * '"')
             $(tap_upload_cmd(upload))
             --insecure
             --output $path
             --location
-            $(URIs.uristring(__))
-            `
-            run(pipeline(__))
-            @_ path
-        end
+            $(URIs.uristring(syncurl))
+        `
+        run(pipeline(cmd))
+        return path
     end
 end
 
