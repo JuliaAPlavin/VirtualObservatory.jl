@@ -23,15 +23,15 @@ include("vizier.jl")
 # XXX: should be just this, but tests won't pass then...
 # Base.download(uri::URI, args...) = download(URIs.uristring(uri), args...)
 Base.download(uri::URI, file=tempname()) = 
-	try
-		download(URIs.uristring(uri), file)
-	catch e
-		try
-			run(`$(curl()) --compressed $(URIs.uristring(uri)) --output $file --insecure`)
-			file
-		catch
-			run(`curl --compressed $(URIs.uristring(uri)) --output $file --insecure`)
-			file
-		end
-	end
+    try
+        download(URIs.uristring(uri), file)
+    catch e
+        try
+            run(`$(curl()) --compressed $(URIs.uristring(uri)) --output $file --insecure`)
+            file
+        catch
+            run(`curl --compressed $(URIs.uristring(uri)) --output $file --insecure`)
+            file
+        end
+    end
 end

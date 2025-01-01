@@ -1,15 +1,15 @@
 struct TAPService
-	baseurl::URI
-	format::String
+    baseurl::URI
+    format::String
 end
 TAPService(baseurl::AbstractString; format="VOTABLE/TD") = TAPService(URI(baseurl), format)
 
 _TAP_SERVICES = Dict(
-	:vizier => TAPService("http://tapvizier.cds.unistra.fr/TAPVizieR/tap"),
-	:simbad => TAPService("https://simbad.u-strasbg.fr/simbad/sim-tap"),
-	:ned => TAPService("https://ned.ipac.caltech.edu/tap"),
-	:gaia => TAPService("https://gea.esac.esa.int/tap-server/tap", format="VOTABLE_PLAIN"),
-	:cadc => TAPService("https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus", format="VOTABLE"),
+    :vizier => TAPService("http://tapvizier.cds.unistra.fr/TAPVizieR/tap"),
+    :simbad => TAPService("https://simbad.u-strasbg.fr/simbad/sim-tap"),
+    :ned => TAPService("https://ned.ipac.caltech.edu/tap"),
+    :gaia => TAPService("https://gea.esac.esa.int/tap-server/tap", format="VOTABLE_PLAIN"),
+    :cadc => TAPService("https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus", format="VOTABLE"),
 )
 TAPService(service::Symbol) = _TAP_SERVICES[service]
 
@@ -27,12 +27,12 @@ A `TAPService` aims to follow the `DBInterface` interface, with query execution 
 connect(::Type{TAPService}, args...) = TAPService(args...)
 
 struct TAPTable
-	service::TAPService
-	tablename::String
-	unitful::Bool
-	ra_col::String
-	dec_col::String
-	cols
+    service::TAPService
+    tablename::String
+    unitful::Bool
+    ra_col::String
+    dec_col::String
+    cols
 end
 TAPTable(service, tablename, cols=All(); unitful=true, ra_col="ra", dec_col="dec") = TAPTable(service, tablename, unitful, ra_col, dec_col, cols)
 
@@ -48,47 +48,47 @@ execute(tap::TAPService, query::AbstractString; upload=nothing, kwargs...) = exe
 execute(T::Type, tap::TAPService, query::AbstractString; upload=nothing, kwargs...) = @p download(tap, query; upload) |> VOTables.read(T; kwargs...)
 
 function Base.download(tap::TAPService, query::AbstractString, path=tempname(); upload=nothing)
-	syncurl = @p tap.baseurl |> @modify(joinpath(_, "sync"), __.path)
-	if isnothing(upload)
-		# should probably work with POST as well by design, but some services prefer GET when possible
-		@p let
-			syncurl
-			URI(__; query = [
-				"request" => "doQuery",
-				"lang" => "ADQL",
-				"FORMAT" => tap.format,
-				"query" => strip(query),
-			])
-			download(__, path)
-		end
-	else
-		# XXX: try to make the same request with HTTP.jl
-		@p let
-			syncurl
-			`
-			curl -X POST
-			-F REQUEST=doQuery
-			-F LANG=ADQL
-			-F FORMAT="$(tap.format)"
-			-F QUERY=$('"' * replace(strip(query), "\"" => "\\\"") * '"')
-			$(tap_upload_cmd(upload))
-			--insecure
-			--output $path
-			$(URIs.uristring(__))
-			`
-			run(pipeline(__))
-			@_ path
-		end
-	end
+    syncurl = @p tap.baseurl |> @modify(joinpath(_, "sync"), __.path)
+    if isnothing(upload)
+        # should probably work with POST as well by design, but some services prefer GET when possible
+        @p let
+            syncurl
+            URI(__; query = [
+                "request" => "doQuery",
+                "lang" => "ADQL",
+                "FORMAT" => tap.format,
+                "query" => strip(query),
+            ])
+            download(__, path)
+        end
+    else
+        # XXX: try to make the same request with HTTP.jl
+        @p let
+            syncurl
+            `
+            curl -X POST
+            -F REQUEST=doQuery
+            -F LANG=ADQL
+            -F FORMAT="$(tap.format)"
+            -F QUERY=$('"' * replace(strip(query), "\"" => "\\\"") * '"')
+            $(tap_upload_cmd(upload))
+            --insecure
+            --output $path
+            $(URIs.uristring(__))
+            `
+            run(pipeline(__))
+            @_ path
+        end
+    end
 end
 
 tap_upload_cmd(::Nothing) = []
 tap_upload_cmd(upload) = @p let
-	upload
-	map(keys(__), values(__)) do k, tbl
-		vot_file = tempname()
-		tbl |> VOTables.write(vot_file)
-		["-F UPLOAD=$k,param:$k", "-F $k=@$vot_file"]
-	end
-	flatten
+    upload
+    map(keys(__), values(__)) do k, tbl
+        vot_file = tempname()
+        tbl |> VOTables.write(vot_file)
+        ["-F UPLOAD=$k,param:$k", "-F $k=@$vot_file"]
+    end
+    flatten
 end
