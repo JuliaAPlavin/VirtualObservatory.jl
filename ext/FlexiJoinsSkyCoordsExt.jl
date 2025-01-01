@@ -25,6 +25,7 @@ function innerjoin(
 		VirtualObservatory._table_type_from_coldef(datas[1].cols),
 		votfile;
 		datas[1].unitful)
+	rm(votfile)
 	vot_viz = delete(vot_xmatch, @optics _._key _._ra_d _._dec_d _.angDist)
 	StructArray(NamedTuple{keys(datas)}((vot_viz, view(datas[2], vot_xmatch._key))))
 end

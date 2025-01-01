@@ -14,10 +14,11 @@ _DATALINK_SERVICES_ARGS = Dict(
 DataLinkService(service::Symbol) = DataLinkService(_DATALINK_SERVICES_ARGS[service]...)
 
 
-datalink_table(dl::DataLinkService, row; kwargs...) = @p let
-    URI(dl.datalink_url, query="ID" => row.publisherID)
-    download()
-    VOTables.read(; kwargs...)
+function datalink_table(dl::DataLinkService, row; kwargs...)
+    file = download(URI(dl.datalink_url, query="ID" => row.publisherID))
+    tbl = VOTables.read(file; kwargs...)
+    rm(file)
+    return tbl
 end
     
 

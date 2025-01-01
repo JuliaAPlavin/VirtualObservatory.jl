@@ -36,8 +36,18 @@ _colspec_to_urlparam(cols::Cols{<:Tuple{Union{Tuple,Vector}}}) = join(only(cols.
 
 _table_type_from_coldef(_) = StructArray
 
-table(c::VizierCatalog; kwargs...) = VOTables.read(_table_type_from_coldef(c.cols), download(c); c.unitful, kwargs...)
-StructArrays.StructArray(c::VizierCatalog; kwargs...) = VOTables.read(StructArray, download(c); c.unitful, kwargs...)
+function table(c::VizierCatalog; kwargs...)
+    file = download(c)
+    tbl = VOTables.read(_table_type_from_coldef(c.cols), file; c.unitful, kwargs...)
+    rm(file)
+    return tbl
+end
+function StructArrays.StructArray(c::VizierCatalog; kwargs...)
+    file = download(c)
+    tbl = VOTables.read(StructArray, file; c.unitful, kwargs...)
+    rm(file)
+    return tbl
+end
 
 
 function vizier_xmatch_vot(A, B, maxsep)

@@ -51,7 +51,12 @@ Execute the ADQL `query` at the specified TAP service, and return the result as 
 `kwargs` are passed to `VOTables.read`, for example specify `unitful=true` to parse columns with units into `Unitful.jl` values.
 """
 execute(tap::TAPService, query::AbstractString; upload=nothing, kwargs...) = execute(StructArray, tap, query; upload, kwargs...)
-execute(T::Type, tap::TAPService, query::AbstractString; upload=nothing, kwargs...) = @p download(tap, query; upload) |> VOTables.read(T; kwargs...)
+function execute(T::Type, tap::TAPService, query::AbstractString; upload=nothing, kwargs...)
+    file = download(tap, query; upload)
+    tbl = VOTables.read(T, file; kwargs...)
+    rm(file)
+    return tbl
+end
 
 function Base.download(tap::TAPService, query::AbstractString, path=tempname(); upload=nothing)
     # URL is the same regardless of uploading or not
