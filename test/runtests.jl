@@ -7,7 +7,6 @@ using TestItemRunner
     using Dates
     using Unitful
     using VirtualObservatory: StructArray
-    using VirtualObservatory.VOTables: DictArray
 
     c = table(VizierCatalog("J/ApJ/923/67/table2"))
     @test c.recno == 1:7728
@@ -18,7 +17,7 @@ using TestItemRunner
     @test colmetadata(c, :ID) == metadata(c.ID)
 
     c = table(VizierCatalog("J/ApJ/923/67/table2", Cols([:ID, :Epoch])))
-    @test c isa DictArray
+    @test c isa StructArray
     @test length(c[1]) == 2
     @test c[1].ID == "0003+380"
 
@@ -57,7 +56,7 @@ end
         unitful=true
     )
     @test length(tbl) == 10
-    @test propertynames(tbl) == [propertynames(catalog); :id]
+    @test propertynames(tbl) == (propertynames(catalog)..., :id)
     @test tbl.ID == catalog.ID
     @test tbl.recno == catalog.recno
     @test tbl.Tb ≈ catalog.Tb
