@@ -51,14 +51,38 @@ Execute the ADQL `query` at the specified TAP service, and return the result as 
 `kwargs` are passed to `VOTables.read`, for example specify `unitful=true` to parse columns with units into `Unitful.jl` values.
 """
 execute(tap::TAPService, query::AbstractString; upload=nothing, kwargs...) = execute(StructArray, tap, query; upload, kwargs...)
-function execute(T::Type, tap::TAPService, query::AbstractString; upload=nothing, kwargs...)
-    file = download(tap, query; upload)
+function execute(T::Type, tap::TAPService, query::AbstractString; upload=nothing, cache=false, read_cache=cache, write_cache=cache, kwargs...)
+    file = download(tap, query; upload, cache, read_cache, write_cache)
     tbl = VOTables.read(T, file; kwargs...)
     rm(file)
     return tbl
 end
 
-function Base.download(tap::TAPService, query::AbstractString, path=tempname(); upload=nothing)
+function Base.download(tap::TAPService, query::AbstractString, path=tempname(); upload=nothing, cache=false, read_cache=cache, write_cache=cache)
+    if read_cache || write_cache
+        if !isnothing(upload)
+            error("Caching queries with uploads is not supported")
+            # @warn "Caching queries with uploads relies on the uploaded data serialization. Please make sure it remains consistent."
+        end
+        cache_dct = @p let
+            joinpath(@get_scratch!("cache"), "cache.db")
+            SQLite.DB(__)
+            SQLDictionary{
+                @NamedTuple{service_url::String, query_stripped::String},
+                @NamedTuple{query::String, response::String}}(
+                __, :TAP_downloads)
+        end
+        query_stripped = @p query strip() replace(__, r"\s+" => " ")
+        cache_key = (; service_url=string(tap.baseurl), query_stripped)
+        if read_cache && haskey(cache_dct, cache_key)
+            (;response) = cache_dct[cache_key]
+            open(path, "w") do f
+                write(f, response)
+            end
+            return path
+        end
+    end
+
     # URL is the same regardless of uploading or not
     sync_url = @p tap.baseurl |> @modify(joinpath(_, "sync"), __.path)
 
@@ -116,6 +140,10 @@ function Base.download(tap::TAPService, query::AbstractString, path=tempname(); 
             e = HTTP.StatusError(resp.status, method, string(sync_url), resp)
             @error "HTTP request failed" e
         end
+    end
+
+    if write_cache
+        insert!(cache_dct, cache_key, (;query, response=read(path, String)))
     end
 
     return path

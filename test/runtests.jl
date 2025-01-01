@@ -133,6 +133,19 @@ end
     @test execute(TAPService(:cadc), "select * from TAP_UPLOAD.my"; upload=(my=mytbl,)) == mytbl
 end
 
+@testitem "TAP cache" begin
+    VirtualObservatory.with_scratch_directory(tempdir()) do
+        tbl = execute(TAPService(:cadc), "select top 5 * from caom2.Observation")
+        @test isequal(tbl, execute(TAPService(:cadc), "select top 5 * from caom2.Observation", cache=true))
+        @test isequal(tbl, execute(TAPService(:cadc), "select top 5 * from caom2.Observation", cache=true))
+    end
+
+    # mytbl = [(a=1, b="xx")]
+    # tbl = execute(TAPService(:cadc), "select * from TAP_UPLOAD.my"; upload=(my=mytbl,)) == mytbl
+    # @test isequal(tbl, execute(TAPService(:cadc), "select * from TAP_UPLOAD.my", upload=(my=mytbl,), cache=true))
+    # @test isequal(tbl, execute(TAPService(:cadc), "select * from TAP_UPLOAD.my", upload=(my=mytbl,), cache=true))
+end
+
 @testitem "DataLink cadc" begin
     using VirtualObservatory: DataLinkService
 
