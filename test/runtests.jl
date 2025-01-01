@@ -5,7 +5,7 @@ using TestItemRunner
 
 @testitem "vizier catalog" begin
     using Dates
-    using Unitful
+    using Unitful, UnitfulAngles, UnitfulAstro
     using VirtualObservatory: StructArray
     using DictArrays
 
@@ -40,7 +40,7 @@ end
 @testitem "TAP vizier" begin
     using VirtualObservatory: StructArray
     using DictArrays
-    using Unitful
+    using Unitful, UnitfulAngles, UnitfulAstro
 
     @test TAPService("http://tapvizier.cds.unistra.fr/TAPVizieR/tap") == TAPService(:vizier)
 
@@ -59,7 +59,7 @@ end
 end
 
 @testitem "TAP vizier upload" begin
-    using Unitful
+    using Unitful, UnitfulAngles, UnitfulAstro
 
     catalog = filter(r -> r.ID == "0003+380", table(VizierCatalog("J/ApJ/923/67/table2"); unitful=true))
     tbl = execute(TAPService(:vizier),
@@ -87,7 +87,7 @@ end
 end
 
 @testitem "TAP simbad" begin
-    using Unitful
+    using Unitful, UnitfulAngles, UnitfulAstro
 
     tbl = execute(TAPService(:simbad), """select top 5 * from basic"""; unitful=true)
     @test length(tbl) == 5
@@ -98,7 +98,7 @@ end
 end
 
 @testitem "TAP ned" begin
-    using Unitful
+    using Unitful, UnitfulAngles, UnitfulAstro
 
     tbl = execute(TAPService(:ned), """select top 5 * from objdir"""; unitful=true)
     @test length(tbl) == 5
@@ -151,7 +151,7 @@ end
 @testitem "vizier xmatch" begin
     using FlexiJoins
     using SkyCoords
-    using Unitful
+    using Unitful, UnitfulAngles, UnitfulAstro
 
     tbl = [
         (name="Abc", coords=ICRSCoords(0, 0)),
@@ -191,7 +191,7 @@ end
 @testitem "TAP xmatch" begin
     using FlexiJoins
     using SkyCoords
-    using Unitful
+    using Unitful, UnitfulAngles, UnitfulAstro
 
     tbl = [
         (name="Abc", coords=ICRSCoords(0, 0)),
