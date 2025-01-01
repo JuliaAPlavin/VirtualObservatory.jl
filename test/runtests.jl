@@ -44,7 +44,13 @@ end
 
     @test TAPService("http://tapvizier.cds.unistra.fr/TAPVizieR/tap") == TAPService(:vizier)
 
+    f = download(TAPService(:vizier), """ select top 50 * from "II/246/out" order by 2MASS """)
+    tbl_d = VirtualObservatory.VOTables.read(StructArray, f)
+    f = download(TAPService(:vizier, format="CSV"), """ select top 50 * from "II/246/out" order by 2MASS """)
+    @test startswith(readlines(f)[1], "RAJ2000,DEJ2000,errMaj,errMin,errPA")
+
     tbl = execute(TAPService(:vizier), """ select top 50 * from "II/246/out" order by 2MASS """)
+    @test isequal(tbl, tbl_d)
     @test length(tbl) == 50
     @test tbl[49].RAJ2000 == 0.0001
     @test tbl[49].DEJ2000 == 34.987617

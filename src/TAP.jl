@@ -11,7 +11,10 @@ _TAP_SERVICES = Dict(
     :gaia => TAPService("https://gea.esac.esa.int/tap-server/tap"),
     :cadc => TAPService("https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus"),
 )
-TAPService(service::Symbol) = _TAP_SERVICES[service]
+function TAPService(service::Symbol; kwargs...)
+    svc = _TAP_SERVICES[service]
+    setproperties(svc; kwargs...)
+end
 
 @doc """
     TAPService(baseurl, [format="VOTABLE/TD"])
