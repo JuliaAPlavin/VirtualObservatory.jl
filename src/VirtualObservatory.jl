@@ -12,6 +12,9 @@ using HTTP
 using URIs
 import DBInterface: connect, execute
 using DataAPI: Cols, All
+using SQLCollections: SQLDictionary
+import SQLite
+using Scratch
 
 export
     VOService,
