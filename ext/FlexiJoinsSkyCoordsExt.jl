@@ -10,17 +10,19 @@ using VirtualObservatory.DataPipes, VirtualObservatory.VOTables, VirtualObservat
 
 function innerjoin(
         datas::NamedTuple{<:Any, <:Union{Tuple{VizierCatalog, Any}, Tuple{Any, VizierCatalog}}},
-        cond::ByDistance{<:Any, <:Any, typeof(separation)}
+        cond::ByDistance{<:Any, <:Any, typeof(separation)};
+        download_only=false
     )
 	viz_ix = @p datas |> Tuple |> findall(_ isa VizierCatalog)
 	length(viz_ix) == 1 || error("Joining two VizieR catalogs not supported yet")
 	viz_ix = only(viz_ix)
 	if viz_ix == 2
-		return swap_sides(innerjoin(swap_sides(datas), swap_sides(cond)))
+		return swap_sides(innerjoin(swap_sides(datas), swap_sides(cond); download_only))
 	end
 	@assert viz_ix == 1
-	
+
 	votfile = vizier_xmatch_vot((datas[1], cond.func_L), (datas[2], cond.func_R), cond.max)
+	download_only && return votfile
 	vot_xmatch = VOTables.read(
 		VirtualObservatory._table_type_from_coldef(datas[1].cols),
 		votfile;
@@ -32,19 +34,20 @@ end
 
 function innerjoin(
         datas::NamedTuple{<:Any, <:Union{Tuple{TAPTable, Any}, Tuple{Any, TAPTable}}},
-        cond::ByDistance{<:Any, <:Any, typeof(separation)}
+        cond::ByDistance{<:Any, <:Any, typeof(separation)};
+        download_only=false
     )
 	viz_ix = @p datas |> Tuple |> findall(_ isa TAPTable)
 	length(viz_ix) == 1 || error("Joining two TAP tables not supported yet")
 	viz_ix = only(viz_ix)
 	if viz_ix == 2
-		return swap_sides(innerjoin(swap_sides(datas), swap_sides(cond)))
+		return swap_sides(innerjoin(swap_sides(datas), swap_sides(cond); download_only))
 	end
 	@assert viz_ix == 1
-	
+
 	restype = VirtualObservatory._table_type_from_coldef(datas[1].cols)
 
-	vot_xmatch = @p let
+	uploadtbl = @p let
 		datas[2]
 		StructArray(
 			my_key=keys(__),
@@ -56,19 +59,23 @@ function innerjoin(
 			dec_d=rad2deg(_.coords.dec),
 		)
 		@delete __.coords
-		execute(restype, datas[1].service, """
-			SELECT
-				my.my_key,
-				$(_cols_to_sql(datas[1].cols))
-			FROM TAP_UPLOAD.my
-			JOIN $(datas[1].tablename) AS taptbl
-			ON 1 = CONTAINS(
-				POINT(my.ra_d, my.dec_d),
-				CIRCLE(taptbl.$(datas[1].ra_col), taptbl.$(datas[1].dec_col), $(rad2deg(cond.max)))
-			)
-			""";
-			upload=(my=__,), datas[1].unitful)
 	end
+
+	query = """
+		SELECT
+			my.my_key,
+			$(_cols_to_sql(datas[1].cols))
+		FROM TAP_UPLOAD.my
+		JOIN $(datas[1].tablename) AS taptbl
+		ON 1 = CONTAINS(
+			POINT(my.ra_d, my.dec_d),
+			CIRCLE(taptbl.$(datas[1].ra_col), taptbl.$(datas[1].dec_col), $(rad2deg(cond.max)))
+		)
+		"""
+
+	download_only && return download(datas[1].service, query; upload=(my=uploadtbl,))
+
+	vot_xmatch = execute(restype, datas[1].service, query; upload=(my=uploadtbl,), datas[1].unitful)
 	vot_viz = delete(vot_xmatch, @optics _.my_key)
 	StructArray(NamedTuple{keys(datas)}((vot_viz, view(datas[2], vot_xmatch.my_key))))
 end
