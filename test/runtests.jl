@@ -202,6 +202,8 @@ end
 
     tbl = TAPTable(TAPService(:vizier), "J/ApJ/923/67/table2")
     A = StructArray(tbl)
+    f = download(tbl)
+    @test isequal(VirtualObservatory.VOTables.read(StructArray, f), A)
     @test isequal(StructArray(DictArray(tbl)), A)
     @test isequal(execute(StructArray, TAPService(:vizier), " select * from \"J/ApJ/923/67/table2\" "), A)
     @test isequal(execute(DictArray, TAPService(:vizier), " select * from \"J/ApJ/923/67/table2\" ") |> StructArray, A)

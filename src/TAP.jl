@@ -43,6 +43,7 @@ end
 TAPTable(service, tablename, cols=All(); unitful=true, ra_col="ra", dec_col="dec") = TAPTable(service, tablename, unitful, ra_col, dec_col, cols)
 
 StructArrays.StructArray(t::TAPTable) = execute(StructArray, t.service, "select * from \"$(t.tablename)\"")
+Base.download(t::TAPTable, path=tempname(); kwargs...) = download(t.service, "select * from \"$(t.tablename)\"", path; kwargs...)
 
 """    execute([restype=StructArray], tap::TAPService, query::AbstractString; kwargs...)
 
