@@ -45,21 +45,23 @@ TAPTable(service, tablename, cols=All(); unitful=true, ra_col="ra", dec_col="dec
 StructArrays.StructArray(t::TAPTable; kwargs...) = execute(StructArray, t.service, "select * from \"$(t.tablename)\""; kwargs...)
 Base.download(t::TAPTable, path=tempname(); kwargs...) = download(t.service, "select * from \"$(t.tablename)\"", path; kwargs...)
 
-"""    execute([restype=StructArray], tap::TAPService, query::AbstractString; kwargs...)
+"""    execute([restype=StructArray], tap::TAPService, query::AbstractString; MAXREC=nothing, kwargs...)
 
 Execute the ADQL `query` at the specified TAP service, and return the result as a `StructArray` - a fully featured Julia table.
 
-`kwargs` are passed to `VOTables.read`, for example specify `unitful=true` to parse columns with units into `Unitful.jl` values.
+`MAXREC` limits the number of result rows returned by the server. When the server truncates results, an error/warning is raised (controlled by the `strict` kwarg of `VOTables.read`).
+
+Other `kwargs` are passed to `VOTables.read`, for example specify `unitful=true` to parse columns with units into `Unitful.jl` values.
 """
 execute(tap::TAPService, query::AbstractString; upload=nothing, kwargs...) = execute(StructArray, tap, query; upload, kwargs...)
-function execute(T::Type, tap::TAPService, query::AbstractString; upload=nothing, cache=false, read_cache=cache, write_cache=cache, kwargs...)
-    file = download(tap, query; upload, cache, read_cache, write_cache)
+function execute(T::Type, tap::TAPService, query::AbstractString; upload=nothing, MAXREC=nothing, cache=false, read_cache=cache, write_cache=cache, kwargs...)
+    file = download(tap, query; upload, MAXREC, cache, read_cache, write_cache)
     tbl = VOTables.read(T, file; kwargs...)
     rm(file)
     return tbl
 end
 
-function Base.download(tap::TAPService, query::AbstractString, path=tempname(); upload=nothing, cache=false, read_cache=cache, write_cache=cache)
+function Base.download(tap::TAPService, query::AbstractString, path=tempname(); upload=nothing, MAXREC=nothing, cache=false, read_cache=cache, write_cache=cache)
     if read_cache || write_cache
         if !isnothing(upload)
             error("Caching queries with uploads is not supported")
@@ -97,6 +99,7 @@ function Base.download(tap::TAPService, query::AbstractString, path=tempname(); 
             "lang" => "ADQL",
             "query" => strip(query),];
             isnothing(tap.format) ? [] : ["FORMAT" => tap.format];
+            isnothing(MAXREC) ? [] : ["MAXREC" => string(MAXREC)];
         ]
     else
         # uploading
@@ -107,6 +110,7 @@ function Base.download(tap::TAPService, query::AbstractString, path=tempname(); 
             "lang" => "ADQL",
             "query" => strip(query),];
             isnothing(tap.format) ? [] : ["FORMAT" => tap.format];
+            isnothing(MAXREC) ? [] : ["MAXREC" => string(MAXREC)];
             @p pairs(upload) collect flatmap() do (k, tbl)
                     vot_io = IOBuffer()
                     VOTables.write(vot_io, tbl)
