@@ -9,13 +9,13 @@ Main capabilities:
 
 Arguments control accessing or processing the catalog:
 - `cols=All()`: only retrieve selected columns
-- `unitful=false`: whether to parse columns with units into `Unitful.jl` values
+- `unitful=true`: whether to parse columns with units into `Unitful.jl` values
 - `table_format="votable"`: format of the downloaded table, only supported for downloading the raw file
 """
 Base.@kwdef struct VizierCatalog
     id::String
     cols
-    unitful::Bool = false
+    unitful::Bool = true
     table_format::String = "votable"
     params_string::String = "-out.max=unlimited" # -out=_RAJ2000,_DEJ2000,_sed0,**
 end
