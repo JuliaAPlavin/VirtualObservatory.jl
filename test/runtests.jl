@@ -62,6 +62,9 @@ end
     @test length(tbl) == 50
     @test tbl[49].RAJ2000 == 0.0001
     @test tbl[49].DEJ2000 == 34.987617
+
+    tbl = execute(TAPService(:vizier), """ select top 50 * from "II/246/out" order by 2MASS """; MAXREC=5, unitful=false, strict=false)
+    @test length(tbl) <= 5
 end
 
 @testitem "TAP vizier upload" begin
